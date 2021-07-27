@@ -82,12 +82,8 @@ public class MainActivity extends AppCompatActivity {
                             if (location != null) {
                                 msg = "Latititude: " + location.getLatitude() + "\nLongtitude: " + location.getLongitude();
                                 LatLng lastKnownLoc = new LatLng(location.getLatitude(), location.getLongitude());
-                                map.moveCamera(CameraUpdateFactory.newLatLngZoom(lastKnownLoc, 15));
-                                map.addMarker(new MarkerOptions()
-                                        .position(lastKnownLoc)
-                                        .title("Here is your last location")
-                                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ROSE)));
-
+                                map.moveCamera(CameraUpdateFactory.newLatLngZoom(lastKnownLoc, 11));
+                                map.addMarker(new MarkerOptions().position(lastKnownLoc));
                             } else {
                                 msg = "No Last Known Location found";
                                 Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
@@ -108,7 +104,7 @@ public class MainActivity extends AppCompatActivity {
                         }
                     });
                 } else {
-                    Toast.makeText(MainActivity.this, "No Permission.", Toast.LENGTH_LONG).show();
+                    Toast.makeText(MainActivity.this, "You have no Permission to write!", Toast.LENGTH_LONG).show();
                 }
             }
         });
