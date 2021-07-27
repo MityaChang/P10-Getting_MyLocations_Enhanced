@@ -19,105 +19,97 @@ import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.maps.model.LatLng;
 
 import java.io.File;
 import java.io.FileWriter;
 
 public class DetectorService extends Service {
-    String folderLocation;
-    LocationCallback locationCallback;
-    LocationRequest locationRequest;
+    LocationRequest mLocationRequest = LocationRequest.create();
+    LocationCallback mLocationCallback;
     FusedLocationProviderClient client;
-    boolean started;
 
-    @Override
-    public IBinder onBind(Intent intent) {
-        // TODO: Return the communication channel to the service.
-        throw new UnsupportedOperationException("Not yet implemented");
+    public DetectorService() {
     }
 
+    @Override
+    public void onCreate() {
+        Log.d("MyService", "Service created");
+        super.onCreate();
+    }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (!started) {
-            started = true;
-            client = LocationServices.getFusedLocationProviderClient(getApplicationContext());
-            //
-            locationRequest = new LocationRequest();
-            Log.d("check", "check");
-            locationCallback = new LocationCallback() {
-                public void onLocationResult(LocationResult locationResult) {
-                    if (locationResult != null) {
-                        Log.d("check", "check");
-                        Location data = locationResult.getLastLocation();
-                        Double lat = data.getLatitude();
-                        Double log = data.getLongitude();
-                        try {
-                            folderLocation =
-                                    Environment.getExternalStorageDirectory()
-                                            .getAbsolutePath() + "/Folder";
-                            File folder = new File(folderLocation);
-                            if (folder.exists() == false) {
-                                boolean result = folder.mkdir();
-                                if (result == true) {
-                                    Log.d("check", "Folder created");
-                                }
-                            }
-                            try {
-                                folderLocation = Environment.getExternalStorageDirectory().getAbsolutePath() + "/Folder";
-                                Log.d("check", "checky");
-                                File targetFile = new File(folderLocation, "data2.txt");
-                                FileWriter writer = new FileWriter(targetFile, true);
-                                writer.write(lat + "," + log + "\n");
-                                writer.flush();
-                                writer.close();
-                            } catch (Exception e) {
-                                Log.d("check", folderLocation.toString());
-                                Toast.makeText(getApplicationContext(), "Failed to write!", Toast.LENGTH_LONG).show();
-                                e.printStackTrace();
-                            }
-                        } catch (Exception e) {
-                            Toast.makeText(getApplicationContext(), "Failed to create folder!", Toast.LENGTH_LONG).show();
-                            e.printStackTrace();
-                        }
-                        Toast.makeText(getApplicationContext(), lat + "\n" + log, Toast.LENGTH_SHORT).show();
+        Log.d("MyService", "Service started");
+        client = LocationServices.getFusedLocationProviderClient(DetectorService.this);
 
+        mLocationCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                if (locationResult != null) {
+                    Location data = locationResult.getLastLocation();
+                    double lat = data.getLatitude();
+                    double lng = data.getLongitude();
+                    Toast.makeText(getApplicationContext(), lat + ", " + lng, Toast.LENGTH_SHORT).show();
 
+                    // Folder creation
+                    String folderLocation = getFilesDir().getAbsolutePath() + "/P10";
+                    File folder = new File(folderLocation);
+                    if (!folder.exists()) {
+                        boolean result = folder.mkdir();
+                        if (result)
+                            Log.d("File Read/Write", "Folder created");
+                        else
+                            Log.d("File Read/Write", "Folder failed to create");
+                    } else
+                        Log.d("File Read/Write", "Folder already exist");
+
+                    // File creation and writing
+                    try {
+                        File targetFile = new File(folderLocation, "P10LocationData.txt");
+                        FileWriter writer = new FileWriter(targetFile, true);
+                        writer.write(lat + ", " + lng + "\n");
+                        writer.flush();
+                        writer.close();
+                    } catch (Exception e) {
+                        Toast.makeText(DetectorService.this, "Failed to write!", Toast.LENGTH_LONG).show();
+                        e.printStackTrace();
                     }
                 }
-            };
-            if (checkPermission()) {
-                Log.d("check", "check2");
-                locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-                locationRequest.setInterval(500);
-                locationRequest.setFastestInterval(500);
-                locationRequest.setSmallestDisplacement(0);
-                client = LocationServices.getFusedLocationProviderClient(getApplicationContext());
-                client.requestLocationUpdates(locationRequest, locationCallback, null);
             }
+        };
+        if (checkPermission() == true) {
+
+            mLocationRequest = LocationRequest.create();
+            mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+            mLocationRequest.setInterval(30);
+            mLocationRequest.setFastestInterval(100);
+            mLocationRequest.setSmallestDisplacement(500);
+            client.requestLocationUpdates(mLocationRequest, mLocationCallback, null);
         }
 
-        return START_STICKY;
+        return super.onStartCommand(intent, flags, startId);
     }
 
-    private boolean checkPermission() {
-        int permissionCheck_Fine = ContextCompat.checkSelfPermission(
-                getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION);
+    @Override
+    public void onDestroy() {
+        Log.d("MyService", "Service exited");
+        client.removeLocationUpdates(mLocationCallback);
+        super.onDestroy();
+    }
 
-        if (
-                permissionCheck_Fine == PermissionChecker.PERMISSION_GRANTED
-        ) {
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+
+    // Step 3b
+    private boolean checkPermission() {
+        int permissionCheck_Fine = ContextCompat.checkSelfPermission(DetectorService.this, Manifest.permission.ACCESS_FINE_LOCATION);
+
+        if (permissionCheck_Fine == PermissionChecker.PERMISSION_GRANTED) {
             return true;
         } else {
             return false;
         }
-    }
-
-
-    @Override
-    public void onDestroy() {
-        client.removeLocationUpdates(locationCallback);
-        super.onDestroy();
     }
 }

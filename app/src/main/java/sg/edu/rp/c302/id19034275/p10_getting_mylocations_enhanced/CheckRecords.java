@@ -23,123 +23,139 @@ import java.io.FileWriter;
 import java.util.ArrayList;
 
 public class CheckRecords extends AppCompatActivity {
-    ArrayAdapter aa,aaFav;
-    ArrayList<String> al,alFav;
-    Button btnRefresh,btnFav;
+    Button btnRefresh, btnFavorites;
+    TextView tvRecords;
     ListView lv;
-    TextView tv;
-    String folderLocation;
-    ActionBar ab;
+    ArrayAdapter aa;
+    ArrayList<String> al;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_check_records);
+
         btnRefresh = findViewById(R.id.btnRefresh);
-        btnFav = findViewById(R.id.btnFavourite);
-        tv = findViewById(R.id.tv);
+        tvRecords = findViewById(R.id.tvNumofRecords);
+        btnFavorites = findViewById(R.id.btnFavourite);
         lv = findViewById(R.id.lv);
+
         al = new ArrayList<>();
-        alFav = new ArrayList<>();
-        tv.setText("Number of records: " + al.size());
-        aa = new ArrayAdapter(CheckRecords.this, android.R.layout.simple_list_item_1,al);
-        aaFav = new ArrayAdapter(CheckRecords.this, android.R.layout.simple_list_item_1,alFav);
 
-        ab = getSupportActionBar();
-        ab.setDisplayHomeAsUpEnabled(true);
-        btnRefresh.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                al.clear();
-                folderLocation = Environment.getExternalStorageDirectory().getAbsolutePath() + "/Folder";
-                File targetFile = new File(folderLocation,"data2.txt");
-                if (targetFile.exists() == true){
-                    String data = "";
-                    try{
-                        FileReader reader = new FileReader(targetFile);
-                        BufferedReader br = new BufferedReader(reader);
-                        String line = br.readLine();
-                        while(line != null){
-                            data += line +"\n";
-                            al.add(line);
-                            line = br.readLine();
+        // Read file from P10LocationData2.txt to Activity
+        String folder = getFilesDir().getAbsolutePath() + "/P10";
+        File file = new File(folder, "P10LocationData.txt");
+        if (file.exists() == true) {
+            int numberOfRecords = 0;
+            try {
+                FileReader reader = new FileReader(file);
+                BufferedReader br = new BufferedReader(reader);
 
-                        }
-                        br.close();
-                        reader.close();
-                    }catch (Exception e){
-                        Toast.makeText(CheckRecords.this,"Failed to read!",Toast.LENGTH_LONG).show();
-                        e.printStackTrace();
-                    }
-                    Log.d("Content",data);
-                    tv.setText("Number of records: " + al.size());
-                    aa.notifyDataSetChanged();
-                    lv.setAdapter(aa);
+                String line = br.readLine();
+                while (line != null) {
+                    al.add(line);
+                    line = br.readLine();
+                    numberOfRecords += 1;
                 }
+                aa = new ArrayAdapter(this, android.R.layout.simple_list_item_1, al);
+                lv.setAdapter(aa);
+                tvRecords.setText("Number of records: " + numberOfRecords);
+                br.close();
+                reader.close();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-        });
-        lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                AlertDialog.Builder dialog = new AlertDialog.Builder(CheckRecords.this);
-                dialog.setMessage("Add this location in your favourite list?");
-                dialog.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int x) {
+
+            btnRefresh.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    al.clear();
+                    File file = new File(folder, "P10LocationData.txt");
+                    if (file.exists() == true) {
+                        int numberOfRecords = 0;
                         try {
-                            folderLocation = Environment.getExternalStorageDirectory().getAbsolutePath() + "/Folder";
-                            File targetFile = new File(folderLocation, "favorites.txt");
-                            FileWriter writer = new FileWriter(targetFile, true);
-                            writer.write(al.get(i) + "\n");
-                            writer.flush();
-                            writer.close();
+                            FileReader reader = new FileReader(file);
+                            BufferedReader br = new BufferedReader(reader);
+
+                            String line = br.readLine();
+                            while (line != null) {
+                                al.add(line);
+                                line = br.readLine();
+                                numberOfRecords += 1;
+                            }
+                            aa = new ArrayAdapter(CheckRecords.this, android.R.layout.simple_list_item_1, al);
+                            lv.setAdapter(aa);
+                            tvRecords.setText("Number of records: " + numberOfRecords);
+                            br.close();
+                            reader.close();
                         } catch (Exception e) {
-                            Log.d("folder",folderLocation.toString());
-                            Toast.makeText(CheckRecords.this, "Failed to write!", Toast.LENGTH_LONG).show();
                             e.printStackTrace();
                         }
                     }
-                });
-                dialog.setNegativeButton("No", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                        dialogInterface.dismiss();
-                    }
-                });
-                dialog.show();
-            }
-        });
-
-        btnFav.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                alFav.clear();
-                folderLocation = Environment.getExternalStorageDirectory().getAbsolutePath() + "/Folder";
-                File targetFile = new File(folderLocation,"favorites.txt");
-                if (targetFile.exists() == true){
-                    String data = "";
-                    try{
-                        FileReader reader = new FileReader(targetFile);
-                        BufferedReader br = new BufferedReader(reader);
-                        String line = br.readLine();
-                        while(line != null){
-                            data += line +"\n";
-                            alFav.add(line);
-                            line = br.readLine();
-
-                        }
-                        br.close();
-                        reader.close();
-                    }catch (Exception e){
-                        Toast.makeText(CheckRecords.this,"Failed to read!",Toast.LENGTH_LONG).show();
-                        e.printStackTrace();
-                    }
-                    Log.d("Content",data);
-                    tv.setText("Number of records: " + alFav.size());
-                    aaFav.notifyDataSetChanged();
-                    lv.setAdapter(aaFav);
                 }
-            }
-        });
+            });
+
+            lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                    String selectedData = al.get(i);
+                    Toast.makeText(CheckRecords.this, al.get(i), Toast.LENGTH_SHORT).show();
+
+                    AlertDialog.Builder builder = new AlertDialog.Builder(CheckRecords.this);
+                    builder.setMessage("Add this location in your favourite list?");
+                    builder.setNegativeButton("No", null);
+                    builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+
+                            try {
+                                String folderLocation_II = getFilesDir().getAbsolutePath() + "/P10";
+                                ;
+                                File targetFile_I = new File(folderLocation_II, "favorites.txt");
+                                FileWriter write_I = new FileWriter(targetFile_I, true);
+                                write_I.write(selectedData + "\n");
+                                write_I.flush();
+                                write_I.close();
+                            } catch (Exception e) {
+                                Toast.makeText(CheckRecords.this, "Failed to write!", Toast.LENGTH_SHORT).show();
+                                e.printStackTrace();
+                            }
+                        }
+                    });
+                    builder.show();
+                }
+            });
+
+            btnFavorites.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    aa.clear();
+                    //Read the file from favorites.txt
+                    File targetFile = new File(folder, "favorites.txt");
+                    if (targetFile.exists() == true) {
+                        try {
+                            FileReader reader = new FileReader(targetFile);
+                            BufferedReader br = new BufferedReader(reader);
+                            //While it returns something where content is present,
+                            // read line until end
+                            al.clear();
+                            String line = br.readLine();
+                            while (line != null) {
+                                al.add(line + "\n");
+                                line = br.readLine();
+                            }
+                            tvRecords.setText("Number of records: " + al.size());
+                            br.close();
+                            reader.close();
+                        } catch (Exception e) {
+                            Toast.makeText(CheckRecords.this, "Failed to read!", Toast.LENGTH_LONG).show();
+                            e.printStackTrace();
+                        }
+                        aa.notifyDataSetChanged();
+                    }
+                }
+            });
+
+        }
 
     }
 }

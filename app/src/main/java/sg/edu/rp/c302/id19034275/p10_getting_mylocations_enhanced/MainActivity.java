@@ -28,6 +28,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.UiSettings;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -37,167 +38,133 @@ import java.io.File;
 import java.io.FileWriter;
 
 public class MainActivity extends AppCompatActivity {
-    private GoogleMap map;
-    Button btnUpdate, btnRemove, btnRecords;
+    Button btnStartDetector, btnStopDetector, btnShowRecords;
     TextView tvlatlng;
-    LocationRequest mLocationRequest;
-    LocationCallback mLocationCallback;
+    ToggleButton tbMusic;
+    private GoogleMap map;
     FusedLocationProviderClient client;
-    LatLng poi_Marker;
-    String folderLocation;
-    ToggleButton toggleMusic;
-    //    Double lat,log;
-    boolean toggleCheck;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        btnUpdate = findViewById(R.id.btnStartDector);
-        btnRemove = findViewById(R.id.btnStopDector);
-        btnRecords = findViewById(R.id.btnRecords);
+        btnShowRecords = findViewById(R.id.btnRecords);
+        tbMusic = findViewById(R.id.tbMusic);
+        btnStartDetector = findViewById(R.id.btnStartDector);
+        btnStopDetector = findViewById(R.id.btnStopDector);
         tvlatlng = findViewById(R.id.tvLatLng);
-        toggleMusic = findViewById(R.id.tbMusic);
-
-        String[] permission = new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
-        ActivityCompat.requestPermissions(MainActivity.this, permission, 0);
-        if(checkPermission()){
-            client = LocationServices.getFusedLocationProviderClient(MainActivity.this);
-            Task<Location> task = client.getLastLocation();
-            task.addOnSuccessListener(MainActivity.this, new OnSuccessListener<Location>() {
-                @Override
-                public void onSuccess(Location location) {
-                    // Log.i("check",location.toString());
-                    String msg ;
-                    if (location != null) {
-                        msg = "Last known location: \nLatititude: " + location.getLatitude() + "\nLongtitude: " + location.getLongitude();
-                        poi_Marker = new LatLng(location.getLatitude(), location.getLongitude());
-                        msg = "Marker Exists";
-                    } else {
-                        msg = "No last known location found";
-                    }
-                    tvlatlng.setText(msg);
-                    Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
-                }
-            });
-        }
 
 
+        client = LocationServices.getFusedLocationProviderClient(MainActivity.this);
 
         FragmentManager fm = getSupportFragmentManager();
-        SupportMapFragment mapFragment = (SupportMapFragment) fm.findFragmentById(R.id.map);
+        SupportMapFragment mapFragment = (SupportMapFragment)
+                fm.findFragmentById(R.id.map);
+
+
+        // Map Async
         mapFragment.getMapAsync(new OnMapReadyCallback() {
             @Override
             public void onMapReady(GoogleMap googleMap) {
                 map = googleMap;
+
                 UiSettings ui = map.getUiSettings();
-                ui.setCompassEnabled(true);
                 ui.setZoomControlsEnabled(true);
-                map.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(1.4431133093468227, 103.78554439536298),15));
-                int permissionCheck = ContextCompat.checkSelfPermission(MainActivity.this,
-                        android.Manifest.permission.ACCESS_FINE_LOCATION);
+                ui.setCompassEnabled(true);
 
-                if (permissionCheck == PermissionChecker.PERMISSION_GRANTED) {
-                    map.setMyLocationEnabled(true);
+
+                if (checkPermission() == true) {
+                    Task<Location> task = client.getLastLocation();
+                    task.addOnSuccessListener(new OnSuccessListener<Location>() {
+                        @Override
+                        public void onSuccess(Location location) {
+                            String msg;
+                            if (location != null) {
+                                msg = "Latititude: " + location.getLatitude() + "\nLongtitude: " + location.getLongitude();
+                                LatLng lastKnownLoc = new LatLng(location.getLatitude(), location.getLongitude());
+                                map.moveCamera(CameraUpdateFactory.newLatLngZoom(lastKnownLoc, 15));
+                                map.addMarker(new MarkerOptions()
+                                        .position(lastKnownLoc)
+                                        .title("Here is your last location")
+                                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ROSE)));
+
+                            } else {
+                                msg = "No Last Known Location found";
+                                Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
+                            }
+                            try {
+                                String folder = getFilesDir().getAbsolutePath() + "/P10";
+                                File targetFile = new File(folder, "P10LocationData.txt");
+                                FileWriter writer = new FileWriter(targetFile, true);
+                                writer.write(location.getLatitude() + "," + location.getLongitude() + "\n");
+                                writer.flush();
+                                writer.close();
+                            } catch (Exception e) {
+                                Toast.makeText(MainActivity.this, "Failed to write!", Toast.LENGTH_SHORT).show();
+                                e.printStackTrace();
+                            }
+                            tvlatlng.setText(msg);
+
+                        }
+                    });
                 } else {
-                    Log.e("GMap - Permission", "GPS access has not been granted");
-                    ActivityCompat.requestPermissions(MainActivity.this,
-                            new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 0);
-                } }
-        });
-
-        btnUpdate.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-
-                if (checkPermission()) {
-//                    Intent i = new Intent(MainActivity.this,MyServiceLocation.class);
-//                    bindService(i,connection,BIND_AUTO_CREATE);
-                    startService(new Intent(MainActivity.this,DetectorService.class));
-                } else {
-                    ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+                    Toast.makeText(MainActivity.this, "No Permission.", Toast.LENGTH_LONG).show();
                 }
             }
         });
-        btnRemove.setOnClickListener(new View.OnClickListener() {
+
+
+        btnStartDetector.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View view) {
-                if (checkPermission()) {
-                    stopService(new Intent(MainActivity.this,DetectorService.class));
-                } else {
-                    ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
-                }
+            public void onClick(View v) {
+                Intent i = new Intent(MainActivity.this, DetectorService.class);
+                startService(i);
+
             }
         });
-        btnRecords.setOnClickListener(new View.OnClickListener() {
+
+        btnStopDetector.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent i = new Intent(MainActivity.this, DetectorService.class);
+                stopService(i);
+                Toast.makeText(getApplicationContext(), "Services stopped.", Toast.LENGTH_SHORT).show();
+            }
+
+        });
+
+        btnShowRecords.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Intent i = new Intent(MainActivity.this,CheckRecords.class);
+                Intent i = new Intent(MainActivity.this, CheckRecords.class);
                 startActivity(i);
             }
         });
-        toggleMusic.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
-                if (b){
-                    toggleCheck = true;
-                    startService(new Intent(MainActivity.this,MusicService.class));
 
-                }else{
-                    toggleCheck = false;
-                    stopService(new Intent(MainActivity.this,MusicService.class));
+
+        tbMusic.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked == true) {
+                    startService(new Intent(MainActivity.this, MusicService.class));
+                } else {
+                    stopService(new Intent(MainActivity.this, MusicService.class));
                 }
             }
         });
-
-
     }
 
     private boolean checkPermission() {
-//        int permissionCheck_Coarse = ContextCompat.checkSelfPermission(
-//                MainActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION);
         int permissionCheck_Fine = ContextCompat.checkSelfPermission(
                 MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION);
 
-        if (
-//                permissionCheck_Coarse == PermissionChecker.PERMISSION_GRANTED ||
-                permissionCheck_Fine == PermissionChecker.PERMISSION_GRANTED
-        ) {
+        if (permissionCheck_Fine == PermissionChecker.PERMISSION_GRANTED) {
             return true;
         } else {
-//            ActivityCompat.requestPermissions(MainActivity.this,new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},0);
-            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 0);
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 0);
             return false;
-        }
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if(checkPermission()){
-            client = LocationServices.getFusedLocationProviderClient(MainActivity.this);
-            Task<Location> task = client.getLastLocation();
-            task.addOnSuccessListener(MainActivity.this, new OnSuccessListener<Location>() {
-                @Override
-                public void onSuccess(Location location) {
-                    String msg ;
-                    if (location != null) {
-                        msg = "Last known location: \nLatititude: " + location.getLatitude() + "\nLongtitude: " + location.getLongitude();
-                        poi_Marker = new LatLng(location.getLatitude(), location.getLongitude());
-
-                    } else {
-                        msg = "No last known location found";
-                        Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
-                    }
-                    tvlatlng.setText(msg);
-
-                }
-            });
-            if (toggleCheck){
-                toggleMusic.setChecked(true);
-            }else{
-                toggleMusic.setChecked(false);
-            }
         }
     }
 }
